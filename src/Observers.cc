@@ -109,6 +109,8 @@ void RemoteDescriptionObserver::OnFailure(const std::string &error) {
   Emit(kPeerConnectionSetRemoteDescriptionError, error);
 }
 
+
+
 PeerConnectionObserver::PeerConnectionObserver(EventEmitter *listener) : 
   NotifyEmitter(listener) { }
 
@@ -137,12 +139,12 @@ void PeerConnectionObserver::OnIceGatheringChange(webrtc::PeerConnectionInterfac
     Emit(kPeerConnectionIceCandidate, std::string());
   }
 }
-
+/*
 void PeerConnectionObserver::OnStateChange(webrtc::PeerConnectionObserver::StateType state) {
   LOG(LS_INFO) << __PRETTY_FUNCTION__;
 }
-
-void PeerConnectionObserver::OnDataChannel(webrtc::DataChannelInterface *channel) {
+*/
+void PeerConnectionObserver::OnDataChannel(rtc::scoped_refptr<webrtc::DataChannelInterface> channel) {
   LOG(LS_INFO) << __PRETTY_FUNCTION__;
   
   rtc::scoped_refptr<webrtc::DataChannelInterface> dataChannel = channel;
@@ -152,7 +154,7 @@ void PeerConnectionObserver::OnDataChannel(webrtc::DataChannelInterface *channel
   }
 }
 
-void PeerConnectionObserver::OnAddStream(webrtc::MediaStreamInterface *stream) {
+void PeerConnectionObserver::OnAddStream(rtc::scoped_refptr<webrtc::MediaStreamInterface> stream) {
   LOG(LS_INFO) << __PRETTY_FUNCTION__;
   
   rtc::scoped_refptr<webrtc::MediaStreamInterface> mediaStream = stream;
@@ -162,7 +164,7 @@ void PeerConnectionObserver::OnAddStream(webrtc::MediaStreamInterface *stream) {
   }
 }
 
-void PeerConnectionObserver::OnRemoveStream(webrtc::MediaStreamInterface *stream) {
+void PeerConnectionObserver::OnRemoveStream(rtc::scoped_refptr<webrtc::MediaStreamInterface> stream) {
   LOG(LS_INFO) << __PRETTY_FUNCTION__;
   
   rtc::scoped_refptr<webrtc::MediaStreamInterface> mediaStream = stream;
@@ -193,6 +195,13 @@ void PeerConnectionObserver::OnIceCandidate(const webrtc::IceCandidateInterface*
     Emit(kPeerConnectionIceCandidate, writer.write(msg));
   }
 }
+void PeerConnectionObserver :: OnIceConnectionReceivingChange(bool receiving) {}
+/*void PeerConnectionObserver :: OnAddTrack(
+       webrtc::PeerConnectionInterface::IceConnectionState receiver,
+      webrtc::MediaStreamInterface* streams) {}
+
+*/
+
 
 DataChannelObserver::DataChannelObserver(EventEmitter *listener) : 
   NotifyEmitter(listener) { }

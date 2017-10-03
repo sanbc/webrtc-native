@@ -34,7 +34,7 @@
 #include "webrtc/base/logging.h"
 #include "webrtc/base/json.h"
 #include "webrtc/base/basictypes.h"
-#include "webrtc/base/common.h"
+//#include "webrtc/base/common.h" 
 //#include "webrtc/base/scoped_ptr.h"
 #include "webrtc/base/ssladapter.h"
 #include "webrtc/base/sslstreamadapter.h"
@@ -49,12 +49,12 @@
 #include "webrtc/api/jsepsessiondescription.h"
 #include "webrtc/api/mediaconstraintsinterface.h"
 #include "webrtc/api/mediastreaminterface.h"
-#include "webrtc/api/peerconnectionfactory.h"
+#include "webrtc/pc/peerconnectionfactory.h" //path changed from /api/peerconnectionfactory to /pc/peerconnectionfactory
 #include "webrtc/api/peerconnectioninterface.h"
 #include "webrtc/api/test/fakeconstraints.h"
 #include "webrtc/api/datachannelinterface.h"
 
-//#include "webrtc/api/videosourceinterface.h"
+//#include "webrtc/api/videosourceinterface.h" // combined with /api/mediastreaminterface.h
 #include "webrtc/media/base/videosourceinterface.h"
 #include "webrtc/media/engine/webrtcvideocapturerfactory.h"
 #include "webrtc/modules/video_capture/video_capture_factory.h"

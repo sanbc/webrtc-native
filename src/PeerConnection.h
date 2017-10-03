@@ -31,7 +31,11 @@
 #include "Observers.h" 
 #include "EventEmitter.h"
 #include "Wrap.h"
-
+#include <iostream>
+/*const char kAudioLabel[] = "audio_label";
+const char kVideoLabel[] = "video_label";
+const char kStreamLabel[] = "stream_label";
+*/
 namespace WebRTC {
   enum PeerConnectionEvent {
     kPeerConnectionCreateClosed = 1,
@@ -57,9 +61,9 @@ namespace WebRTC {
   class PeerConnection : public RTCWrap, public EventEmitter {
    public:
     static void Init(v8::Handle<v8::Object> exports);
-    
+    Configuration _config;
    private:
-    PeerConnection(const Configuration &config);           
+    PeerConnection(const Configuration config);           
     ~PeerConnection() final;
    
     static void New(const Nan::FunctionCallbackInfo<v8::Value> &info);
@@ -84,6 +88,7 @@ namespace WebRTC {
     static void SetRemoteDescription(const Nan::FunctionCallbackInfo<v8::Value> &info);
 
     /* Supporting old API for now */
+    // void AddStream(webrtc::PeerConnectionInterface *socket);
     static void AddStream(const Nan::FunctionCallbackInfo<v8::Value> &info);
     static void RemoveStream(const Nan::FunctionCallbackInfo<v8::Value> &info);
     static void GetLocalStreams(const Nan::FunctionCallbackInfo<v8::Value> &info);
@@ -136,7 +141,7 @@ namespace WebRTC {
     static void SetOnPeerIdentity(v8::Local<v8::String> property, v8::Local<v8::Value> value, const Nan::PropertyCallbackInfo<void> &info);
     static void GetOnRemoveStream(v8::Local<v8::String> property, const Nan::PropertyCallbackInfo<v8::Value> &info);
     static void SetOnRemoveStream(v8::Local<v8::String> property, v8::Local<v8::Value> value, const Nan::PropertyCallbackInfo<void> &info);
-
+std::unique_ptr<cricket::VideoCapturer> OpenVideoCaptureDevice();
     void On(Event *event) final;
     
     bool IsStable();
@@ -179,8 +184,9 @@ namespace WebRTC {
     rtc::scoped_refptr<PeerConnectionObserver> _peer;
     rtc::scoped_refptr<webrtc::PeerConnectionInterface> _socket;
     rtc::scoped_refptr<webrtc::PeerConnectionFactoryInterface> _factory;
+    std::map<std::string, rtc::scoped_refptr<webrtc::MediaStreamInterface> >
+      active_streams_;
     
-    Configuration _config;
   };
 };
 

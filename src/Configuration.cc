@@ -29,7 +29,7 @@
 using namespace v8;
 using namespace WebRTC;
 
-Configuration::Configuration(v8::Local<v8::Value> value) {
+Configuration::Configuration(v8::Local<v8::Object> value) {
 
 }
 

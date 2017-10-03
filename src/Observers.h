@@ -69,18 +69,41 @@ namespace WebRTC {
    public:
     PeerConnectionObserver(EventEmitter *listener = 0);
     
-    void OnSignalingChange(webrtc::PeerConnectionInterface::SignalingState state) final;
-    void OnIceConnectionChange(webrtc::PeerConnectionInterface::IceConnectionState state) final;
-    void OnIceGatheringChange(webrtc::PeerConnectionInterface::IceGatheringState state) final;
+    /*void OnSignalingChange(webrtc::PeerConnectionInterface::SignalingState state) ;
+    void OnIceConnectionChange(webrtc::PeerConnectionInterface::IceConnectionState state) ;
+    void OnIceGatheringChange(webrtc::PeerConnectionInterface::IceGatheringState state) ;
     void OnStateChange(webrtc::PeerConnectionObserver::StateType state);
-    void OnIceCandidate(const webrtc::IceCandidateInterface* candidate) final;
-    void OnDataChannel(webrtc::DataChannelInterface* channel) final;
-    void OnRenegotiationNeeded() final;
+    void OnIceCandidate(const webrtc::IceCandidateInterface* candidate) ;
+   // void OnDataChannel(webrtc::DataChannelInterface* channel) ;
+ void OnDataChannel(rtc::scoped_refptr<webrtc::DataChannelInterface> channel) ;
 
-    void OnAddStream(webrtc::MediaStreamInterface* stream) final;
-    void OnRemoveStream(webrtc::MediaStreamInterface* stream) final;
+    void OnRenegotiationNeeded() ;
+   void OnAddStream(rtc::scoped_refptr<webrtc::MediaStreamInterface> stream);
+  //  void OnAddStream(webrtc::MediaStreamInterface* stream) ;
+   // void OnRemoveStream(webrtc::MediaStreamInterface* stream) ;
+ void OnRemoveStream(rtc::scoped_refptr<webrtc::MediaStreamInterface> stream) ;
+void OnIceConnectionReceivingChange(bool receiving) ;
+void OnAddTrack(
+       webrtc::PeerConnectionInterface::IceConnectionState receiver,
+      webrtc::MediaStreamInterface* streams) ;*/
+  void OnSignalingChange(
+      webrtc::PeerConnectionInterface::SignalingState new_state);
+  void OnAddStream(
+      rtc::scoped_refptr<webrtc::MediaStreamInterface> stream) ;
+  void OnRemoveStream(
+      rtc::scoped_refptr<webrtc::MediaStreamInterface> stream) ;
+  void OnDataChannel(
+      rtc::scoped_refptr<webrtc::DataChannelInterface> channel) ;
+  void OnRenegotiationNeeded() ;
+  void OnIceConnectionChange(
+      webrtc::PeerConnectionInterface::IceConnectionState new_state) ;
+  void OnIceGatheringChange(
+      webrtc::PeerConnectionInterface::IceGatheringState new_state);
+  void OnIceCandidate(const webrtc::IceCandidateInterface* candidate) ;
+  void OnIceConnectionReceivingChange(bool receiving) ;
   };
-  
+
+
   class DataChannelObserver : 
     public webrtc::DataChannelObserver, 
     public rtc::RefCountInterface,

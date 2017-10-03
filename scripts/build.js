@@ -12,7 +12,9 @@ if (!fs.existsSync(ROOT + path.sep + 'build' + path.sep + 'config.gypi')) {
 
 var PACKAGE = require(path.resolve(ROOT, 'package.json'));
 
-var CHROMIUM = 'https://chromium.googlesource.com/external/webrtc.git@6fabd3d7de5cec8e39e3e6c68de61f9063503597';
+var CHROMIUM = 'https://chromium.googlesource.com/external/webrtc.git@ca4ec2c3b9331e8f054facf400ebaeb9681831e2';
+var CHROMIUM = 'https://chromium.googlesource.com/external/webrtc.git@571f2a6e17b999949d77cc7d51369efd2c2d606c';
+var CHROMIUM = 'https://chromium.googlesource.com/external/webrtc.git@6294a7eb71c891e9ea41273a7a94113f6802d0da';
 var USE_OPENSSL = false;
 var USE_GTK = false;
 var USE_X11 = false;
@@ -27,10 +29,10 @@ var URL = 'http://cide.cc:8080/webrtc/';
 var NODEVER = process.version.split('.');
 var NODE_ZERO = (NODEVER[0] === 'v0');
 var CROSSCOMPILE = (ARCH !== process.arch);
-
+console.log("======",process.argv)
 NODEVER[2] = 'x';
 NODEVER = NODEVER.join('.');
-  
+
 URL += 'webrtc-' + PACKAGE.version + '-' + PLATFORM + '-' + ARCH + '-' + NODEVER + '.node';
   
 if (fs.existsSync(ROOT + path.sep + 'nodejs.gypi')) {
@@ -88,10 +90,11 @@ function install() {
     setTimeout(function() {
       console.log('Done! :)');
     }, 200);
-  }
+  } 
 }
 
 function compile() {
+console.log("process.env",  process.env['GYP_DEFINES']);
   var res = spawn('ninja', [ '-C', WEBRTC_OUT ], {
     cwd: WEBRTC_SRC,
     env: process.env,
@@ -100,33 +103,34 @@ function compile() {
 
   res.on('close', function (code) {
     if (!code) {
-      return install();
+//      return install();
     }
 
-    process.exit(1);
+ //   process.exit(1);
   });
 }
+function build() {
+console.log("build");
+//var res = spawn('python', [ WEBRTC_SRC + path.sep + 'webrtc' + path.sep + 'build' + path.sep + 'gyp_webrtc', 'src' + path.sep + 'webrtc.gyp'
+// gn gen out/Release
+    var res = spawn("gn", ['gen', 'out/Release'], {
+     cwd: WEBRTC_SRC,
+     env: process.env,
+     stdio: 'inherit',
+   });
 
-function build() { 
-  if (fs.existsSync(WEBRTC_SRC)) {
-    var res = spawn('python', [ WEBRTC_SRC + path.sep + 'webrtc' + path.sep + 'build' + path.sep + 'gyp_webrtc', 'src' + path.sep + 'webrtc.gyp' ], {
-      cwd: ROOT,
-      env: process.env,
-      stdio: 'inherit',
-    });
-  
     res.on('close', function (code) {
+
       if (!code) {
         return compile();
       }
-  
+
       process.exit(1);
     });
-  }
 }
 
 function sync() {
-  if (!fs.existsSync(THIRD_PARTY + path.sep + 'webrtc_sync')) {
+ if (!fs.existsSync(THIRD_PARTY + path.sep + 'webrtc_sync')) {
     var res = spawn(GCLIENT, ['sync', '--with_branch_heads'], {
       cwd: WEBRTC,
       env: process.env,
@@ -143,14 +147,16 @@ function sync() {
     });
   } else {
     build();
-  }
+  } 
+ //fs.closeSync(fs.openSync(THIRD_PARTY + path.sep + 'webrtc_sync', 'w'));
+//build();
 }
 
 function configure() {
   if (fs.existsSync(WEBRTC_OUT + path.sep + 'webrtc.node')) {
     fs.unlinkSync(WEBRTC_OUT + path.sep + 'webrtc.node');
   }
-  
+  console.log("CONFIGURE");
   process.env['GYP_DEFINES'] += ' target_arch=' + ARCH;
   process.env['GYP_DEFINES'] += ' host_arch=' + process.arch;
   process.env['GYP_DEFINES'] += ' node_root_dir=' + NODEJS.replace(/\\/g, '\\\\');
@@ -186,7 +192,8 @@ function configure() {
         process.env['CPATH'] += '/usr/arm-linux-gnueabihf/include/c++/5/backward/';
         process.env['CPATH'] += CPATH ? ':' + CPATH : '';
       } else {
-        if (NODE_ZERO) {
+         if (NODE_ZERO) {
+console.log("NODE_ZERO");
           process.env['GYP_DEFINES'] += ' clang=0';
           process.env['CXX'] = 'g++-4.8';
           
@@ -197,6 +204,7 @@ function configure() {
           process.env['CPATH'] += '/usr/include/c++/4.8/backward/';
           process.env['CPATH'] += CPATH ? ':' + CPATH : '';
         } else {
+console.log("!!!!NODE_ZERO");
           process.env['GYP_DEFINES'] += ' clang=1';
         }
 
@@ -206,7 +214,16 @@ function configure() {
           } else {
             process.env['JAVA_HOME'] = '/usr/lib/jvm/default-java';
           }
+        } 
+         /*     process.env['GYP_DEFINES'] += ' clang=0';
+
+      if (!process.env['JAVA_HOME']) {
+        if (fs.existsSync('/usr/lib/jvm/java')) {
+          process.env['JAVA_HOME'] = '/usr/lib/jvm/java';
+        } else {
+          process.env['JAVA_HOME'] = '/usr/lib/jvm/default-java';
         }
+      }*/
       }
 
       break;

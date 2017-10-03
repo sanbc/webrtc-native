@@ -28,11 +28,12 @@
 
 #include "Common.h"
 
-namespace WebRTC {  
+namespace WebRTC { 
+//typedef std::vector<webrtc::PeerConnectionInterface::IceServer> IceServers; 
   class Configuration : public webrtc::PeerConnectionInterface::RTCConfiguration {
     public:
-      explicit Configuration(v8::Local<v8::Value> value = v8::Local<v8::Value>());
-
+      explicit Configuration(v8::Local<v8::Object> value = v8::Local<v8::Object>());
+ //webrtc::PeerConnectionInterface::IceServer ice_server;
       v8::Local<v8::Value> ToConfiguration();
   };
 }; 

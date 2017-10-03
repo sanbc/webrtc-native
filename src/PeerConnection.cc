@@ -30,9 +30,50 @@
 #include "DataChannel.h"
 #include "MediaStream.h"
 #include "Stats.h"
-
+#include <iostream>
+#include <string>
+#include "webrtc/pc/test/fakertccertificategenerator.h"
 using namespace v8;
 using namespace WebRTC;
+using namespace std;
+std::string GetEnvVarOrDefault(const char* env_var_name,
+                               const char* default_value) {
+  std::string value;
+  const char* env_var = getenv(env_var_name);
+  if (env_var)
+    value = env_var;
+
+  if (value.empty())
+    value = default_value;
+
+  return value;
+}
+static const char kStunIceServer[] = "stun:stun.l.google.com:19302";
+static const char kTurnIceServer[] = "turn:test%40hello.com@test.com:1234";
+static const char kTurnIceServerWithTransport[] =
+    "turn:test@hello.com?transport=tcp";
+static const char kSecureTurnIceServer[] =
+    "turns:test@hello.com?transport=tcp";
+static const char kSecureTurnIceServerWithoutTransportParam[] =
+    "turns:test_no_transport@hello.com:443";
+static const char kSecureTurnIceServerWithoutTransportAndPortParam[] =
+    "turns:test_no_transport@hello.com";
+static const char kTurnIceServerWithNoUsernameInUri[] =
+    "turn:test.com:1234";
+static const char kTurnPassword[] = "turnpassword";
+static const int kDefaultStunPort = 3478;
+static const int kDefaultStunTlsPort = 5349;
+static const char kTurnUsername[] = "test";
+static const char kStunIceServerWithIPv4Address[] = "stun:1.2.3.4:1234";
+static const char kStunIceServerWithIPv4AddressWithoutPort[] = "stun:1.2.3.4";
+static const char kStunIceServerWithIPv6Address[] = "stun:[2401:fa00:4::]:1234";
+static const char kStunIceServerWithIPv6AddressWithoutPort[] =
+    "stun:[2401:fa00:4::]";
+static const char kTurnIceServerWithIPv6Address[] =
+    "turn:test@[2401:fa00:4::]:1234";
+std::string GetPeerConnectionString() {
+  return GetEnvVarOrDefault("WEBRTC_CONNECT", "stun:stun.l.google.com:19302");
+}
 
 void PeerConnection::Init(Handle<Object> exports) {
   LOG(LS_INFO) << __PRETTY_FUNCTION__;
@@ -44,6 +85,7 @@ void PeerConnection::Init(Handle<Object> exports) {
   tpl->SetClassName(Nan::New("RTCPeerConnection").ToLocalChecked());
  
   Nan::SetPrototypeMethod(tpl, "addIceCandidate", PeerConnection::AddIceCandidate);
+  Nan::SetPrototypeMethod(tpl, "addStream", PeerConnection::AddStream);
   Nan::SetPrototypeMethod(tpl, "addTrack", PeerConnection::AddTrack);
   Nan::SetPrototypeMethod(tpl, "close", PeerConnection::Close);
   Nan::SetPrototypeMethod(tpl, "createAnswer", PeerConnection::CreateAnswer);
@@ -57,6 +99,7 @@ void PeerConnection::Init(Handle<Object> exports) {
   Nan::SetPrototypeMethod(tpl, "getStats", PeerConnection::GetStats);
   Nan::SetPrototypeMethod(tpl, "getTransceivers", PeerConnection::GetTransceivers);
   Nan::SetPrototypeMethod(tpl, "RemoveTrack", PeerConnection::RemoveTrack);
+  Nan::SetPrototypeMethod(tpl, "removeStream", PeerConnection::RemoveStream);
   Nan::SetPrototypeMethod(tpl, "setConfiguration", PeerConnection::SetConfiguration);
   Nan::SetPrototypeMethod(tpl, "setIdentityProvider", PeerConnection::SetIdentityProvider);
   Nan::SetPrototypeMethod(tpl, "setLocalDescription", PeerConnection::SetLocalDescription);
@@ -99,7 +142,7 @@ void PeerConnection::Init(Handle<Object> exports) {
 
 Nan::Persistent<Function> PeerConnection::constructor;
 
-PeerConnection::PeerConnection(const Configuration &config) : _config(config) { 
+PeerConnection::PeerConnection(const Configuration config) : _config(config) { 
   LOG(LS_INFO) << __PRETTY_FUNCTION__;
 
   _stats = new rtc::RefCountedObject<StatsObserver>(this);
@@ -107,8 +150,39 @@ PeerConnection::PeerConnection(const Configuration &config) : _config(config) {
   _answer = new rtc::RefCountedObject<AnswerObserver>(this);
   _local = new rtc::RefCountedObject<LocalDescriptionObserver>(this);
   _remote = new rtc::RefCountedObject<RemoteDescriptionObserver>(this);
-  _peer = new rtc::RefCountedObject<PeerConnectionObserver>(this);  
-  _factory = webrtc::CreatePeerConnectionFactory(rtc::Thread::Current(), Platform::GetWorker(), 0, 0, 0);
+  _peer = new rtc::RefCountedObject<PeerConnectionObserver>(this); 
+  LOG(LS_INFO) <<  "BEFORE PEERCONNECTION FACTORY CREATED";
+  _factory  = webrtc::CreatePeerConnectionFactory(
+        Platform::GetWorker(), Platform::GetWorker(), Platform::GetSignal(),
+        nullptr, nullptr, nullptr);
+
+//LOG(LS_INFO) <<  "PEERCONNECTION FACTORY CREATED";
+
+//_factory  = webrtc::CreatePeerConnectionFactory();
+// AddStream();
+/*  webrtc::PeerConnectionInterface::RTCConfiguration  Config;
+  webrtc::PeerConnectionInterface::IceServer server;
+  server.uri = "stun:stun.l.google.com:19302";
+  Config.servers.push_back(server);
+
+  webrtc::FakeConstraints constraints;
+constraints.AddOptional(webrtc::MediaConstraintsInterface::kEnableDtlsSrtp,
+                            "false");
+*/
+
+  //_socket = _factory->CreatePeerConnection(
+    //  config, nullptr, nullptr, _peer.get());
+
+//_socket = _factory->CreatePeerConnection(
+ //     config, NULL, NULL, _peer.get());
+
+  if (!_factory.get()) {
+    LOG(LS_INFO) <<  "PEERCONNECTION _factory null";
+  }
+
+  
+ 
+
 }
 
 PeerConnection::~PeerConnection() {
@@ -131,13 +205,71 @@ PeerConnection::~PeerConnection() {
 }
 
 webrtc::PeerConnectionInterface *PeerConnection::GetSocket() {
+
+  RTC_DCHECK(_factory.get() != nullptr);
+  RTC_DCHECK(_peer.get() != nullptr);
+
   LOG(LS_INFO) << __PRETTY_FUNCTION__;
   
   if (!_socket.get()) {
     if (_factory.get()) {
-      EventEmitter::SetReference(true);
-      _socket = _factory->CreatePeerConnection(_config, 0, 0, _peer.get());
-      
+ 
+  //Configuration config;
+  
+   //config.ice_server.uri = "stun:stun.l.google.com:19302";
+LOG(LS_INFO) <<  "BEFORE PEERCONNECTION CREATED ";
+  //config.servers.push_back(config.ice_server);
+  //config.servers.push_back(config.ice_server);
+/*  config.servers[1].uri = kTurnIceServer;
+  config.servers[1].password = kTurnPassword;
+//  config.servers.push_back(config.ice_server);
+  config.servers[2].uri = kTurnIceServerWithTransport;
+  config.servers[2].password = kTurnPassword;
+  //config.servers.push_back(config.ice_server);*/
+  //std::unique_ptr<FakeRTCCertificateGenerator> cert_generator(
+ //     new FakeRTCCertificateGenerator());
+//LOG(LS_INFO) <<  "BEFORE PEERCONNECTION CREATED "<<_config.ice_candidate_pool_size ;
+//_config.ice_candidate_pool_size = 3;
+//LOG(LS_INFO) <<  "BEFORE PEERCONNECTION CREATED "<<_config.ice_candidate_pool_size ;
+  /*rtc::scoped_refptr<webrtc::PeerConnectionInterface> _socket(_factory->CreatePeerConnection(
+      _config, nullptr, nullptr, nullptr,
+      _peer.get()));
+
+*/
+    //  EventEmitter::SetReference(true);
+ //string servers1 = "stun:stun.l.google.com:19302";
+//LOG(LS_INFO)  << "sever is :: "<< _config.servers[0].uri;
+
+ /* webrtc::PeerConnectionInterface::RTCConfiguration  config;
+ // webrtc::PeerConnectionInterface::RTCConfiguration  config;
+  webrtc::PeerConnectionInterface::IceServer server;
+//  server.urls.push_back(std::string("stun:stun.l.google.com:19302"));
+  server.uri = std::string("stun:stun.l.google.com:19302");
+  //config.media_config.video.suspend_below_min_bitrate = false;                    
+  config.servers.push_back(server);
+  config.disable_ipv6_on_wifi = false;
+ // _socket = _factory->CreatePeerConnection(_config, 0, 0, _peer.get());
+//_factory->SetConfiguration(Config);
+  webrtc::FakeConstraints constraints;
+constraints.SetAllowDtlsSctpDataChannels();
+constraints.AddOptional(webrtc::MediaConstraintsInterface::kEnableDtlsSrtp,
+                            "false");
+  std::unique_ptr<FakeRTCCertificateGenerator> cert_generator(
+      new FakeRTCCertificateGenerator());
+  rtc::scoped_refptr<webrtc::PeerConnectionInterface> _socket(_factory->CreatePeerConnection(
+      config, nullptr, nullptr, std::move(cert_generator), _peer.get()));
+*/
+_config.rtcp_mux_policy = webrtc::PeerConnectionInterface::RtcpMuxPolicy::kRtcpMuxPolicyNegotiate;
+webrtc::FakeConstraints constraints;
+constraints.AddOptional(webrtc::MediaConstraintsInterface::kEnableDtlsSrtp,
+                            "true");
+		constraints.AddMandatory(webrtc::MediaConstraintsInterface::kOfferToReceiveVideo, "false");
+		constraints.AddMandatory(webrtc::MediaConstraintsInterface::kOfferToReceiveAudio, "false");
+LOG(LS_INFO)  << "sever is :: "<< _config.servers[0].uri;
+ _socket = _factory->CreatePeerConnection(_config,  nullptr, nullptr, _peer.get());
+ //AddStream(_socket.get());
+// _socket = _factory->CreatePeerConnection(config, &constraints,nullptr, nullptr, _peer.get());
+LOG(LS_INFO) <<  "AFTER PEERCONNECTION CREATED";
       if (!_socket.get()) {
         Nan::ThrowError("Internal Socket Error");
       }
@@ -151,10 +283,58 @@ webrtc::PeerConnectionInterface *PeerConnection::GetSocket() {
 
 void PeerConnection::New(const Nan::FunctionCallbackInfo<Value> &info) {
   LOG(LS_INFO) << __PRETTY_FUNCTION__;
-  
+
+
+
+
+
+// v8::Local<v8::Object> param1 = info[0]->ToObject();
+//v8::Local<v8::Value> name_ = param1->Get(New<v8::String>("name").ToLocalChecked());
+    if (!info[0].IsEmpty() && info[0]->IsObject()) {
+    Local<Object> desc = Local<Object>::Cast(info[0]);
+ Local<Value> servers = desc->Get(Nan::New("servers").ToLocalChecked());
+
+
+v8::String::Utf8Value param1(servers->ToString());
+
+    // convert it to string
+    std::string foo = std::string(*param1);    
+
+LOG(LS_INFO) << "val is" << foo;
+}     
+    // convert it to string
+    
+
+
+
   if (info.IsConstructCall()) {
-    PeerConnection* peer = new PeerConnection(Configuration(Local<Object>::Cast(info[0])));
+Configuration config;
+ Local<Object> _config = Local<Object>::Cast(info[0]);
+Local<Value> iceservers_value = _config->Get(Nan::New("iceServers").ToLocalChecked());
+    if (!iceservers_value.IsEmpty() && iceservers_value->IsArray()) {
+      Local<Array> list = Local<Array>::Cast(iceservers_value);
+
+      for (unsigned int index = 0; index < list->Length(); index++) {
+        Local<Value> server_value = list->Get(index);
+Local<Object> server = Local<Object>::Cast(server_value);
+          Local<Value> url_value = server->Get(Nan::New("url").ToLocalChecked());
+          
+          if (!url_value.IsEmpty() && url_value->IsString()) {
+            v8::String::Utf8Value url(url_value->ToString());
+            webrtc::PeerConnectionInterface::IceServer entry;
+
+            entry.uri = *url;
+
+            LOG(LS_INFO) << "val is"<<entry.uri;
+
+            config.servers.push_back(entry);
+LOG(LS_INFO) << "val is"<<config.servers[0].uri;
+
+}}
+}
+    PeerConnection* peer = new PeerConnection(config);
     peer->Wrap(info.This(), "PeerConnection");
+ LOG(LS_INFO) << "peerconnection connected";
     return info.GetReturnValue().Set(info.This());
   } else {
     const int argc = 2;
@@ -608,6 +788,65 @@ void PeerConnection::SetRemoteDescription(const Nan::FunctionCallbackInfo<Value>
 }
 
 /* Supporting old API for now */
+std::unique_ptr<cricket::VideoCapturer> PeerConnection::OpenVideoCaptureDevice() {
+  std::vector<std::string> device_names;
+  {
+    std::unique_ptr<webrtc::VideoCaptureModule::DeviceInfo> info(
+        webrtc::VideoCaptureFactory::CreateDeviceInfo());
+    if (!info) {
+      return nullptr;
+    }
+    int num_devices = info->NumberOfDevices();
+    for (int i = 0; i < num_devices; ++i) {
+      const uint32_t kSize = 256;
+      char name[kSize] = {0};
+      char id[kSize] = {0};
+      if (info->GetDeviceName(i, name, kSize, id, kSize) != -1) {
+        device_names.push_back(name);
+      }
+    }
+  }
+
+  cricket::WebRtcVideoDeviceCapturerFactory factory;
+  std::unique_ptr<cricket::VideoCapturer> capturer;
+  for (const auto& name : device_names) {
+    capturer = factory.Create(cricket::Device(name, 0));
+    if (capturer) {
+      break;
+    }
+  }
+  return capturer;
+}
+/*void PeerConnection::AddStream(webrtc::PeerConnectionInterface *socket) {
+LOG(LS_INFO) << __PRETTY_FUNCTION__;
+  if (active_streams_.find(kStreamLabel) != active_streams_.end())
+    return;  // Already added.
+
+  rtc::scoped_refptr<webrtc::AudioTrackInterface> audio_track(
+      _factory->CreateAudioTrack(
+          kAudioLabel, _factory->CreateAudioSource(NULL)));
+LOG(LS_INFO) << "audio_track";
+  rtc::scoped_refptr<webrtc::VideoTrackInterface> video_track(
+      _factory->CreateVideoTrack(
+          kVideoLabel,
+          _factory->CreateVideoSource(OpenVideoCaptureDevice(),
+                                                      NULL)));
+ 
+LOG(LS_INFO) << "video_track";
+  rtc::scoped_refptr<webrtc::MediaStreamInterface> stream =
+      _factory->CreateLocalMediaStream(kStreamLabel);
+
+  stream->AddTrack(audio_track);
+  stream->AddTrack(video_track);
+  
+  typedef std::pair<std::string,
+                    rtc::scoped_refptr<webrtc::MediaStreamInterface> >
+      MediaStreamPair;
+  active_streams_.insert(MediaStreamPair(stream->label(), stream));
+
+socket->AddStream(stream);
+  
+}*/
 
 void PeerConnection::AddStream(const Nan::FunctionCallbackInfo<Value> &info) {
   LOG(LS_INFO) << __PRETTY_FUNCTION__;
@@ -1370,4 +1609,6 @@ bool PeerConnection::IsStable() {
   
   return false;
 }
+
+
 

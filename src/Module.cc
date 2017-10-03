@@ -35,6 +35,7 @@
 #include "MediaStreamTrack.h"
 #include "AudioSink.h"
 #include "VideoSink.h"
+#include "GetUserMedia.h"
 
 using namespace v8;
 
@@ -111,8 +112,9 @@ void WebrtcModuleInit(Handle<Object> exports) {
   WebRTC::DataChannel::Init();
   WebRTC::MediaStream::Init();
   WebRTC::MediaStreamTrack::Init();
-  WebRTC::AudioSink::Init(exports);
-  WebRTC::VideoSink::Init(exports);
+  WebRTC::GetUserMedia::Init(exports);
+ // WebRTC::AudioSink::Init(exports);
+ // WebRTC::VideoSink::Init(exports);
   
   exports->Set(Nan::New("RTCGarbageCollect").ToLocalChecked(), Nan::New<FunctionTemplate>(RTCGarbageCollect)->GetFunction()); 
   exports->Set(Nan::New("RTCIceCandidate").ToLocalChecked(), Nan::New<FunctionTemplate>(RTCIceCandidate)->GetFunction());
